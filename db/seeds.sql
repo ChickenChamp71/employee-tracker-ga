@@ -1,0 +1,45 @@
+INSERT INTO departments (department_name)
+VALUES  ('Hogwarts'),
+        ('The Ministry'),
+        ('Media'),
+        ('The Dark');
+
+INSERT INTO roles (job_title, department_id, salary)
+VALUES  ('Student', 1, 10000.00),
+        ('Head Teacher', 1, 100000.00),
+        ('Headmaster', 1, 150000.00),
+        ('Minister of Magic', 2, 150000.00),
+        ('Politician', 2, 125000.00),
+        ('Auror', 2, 100000.00),
+        ('Reporter', 3, 100000.00),
+        ('Camera Man', 3, 75000.00),
+        ('Spy', 4, 100000.00),
+        ('Death Eater', 4, 100000.00),
+        ('Dark Lord', 4, 150000.00);
+
+INSERT INTO employees (first_name, last_name, role_id, manager_id)
+VALUES  ('Harry', 'Potter', 1, 6),
+        ('Hermione', 'Granger', 1, 6),
+        ('Ron', 'Weasley', 1, 6),
+        ('Draco', 'Malfoy', 1, 9),
+        ('Luna', 'Lovegood', 1, 7),
+        ('Minerva', 'McGonagall', 2, 10),
+        ('Filius', 'Flitwick', 2, 10),
+        ('Pomona', 'Sprout', 2, 10),
+        ('Severus', 'Snape', 9, 10),
+        ('Albus', 'Dumbledore', 3, NULL),
+        ('Rufus', 'Scrimgeour', 4, NULL),
+        ('Dolores', 'Umbridge', 5, 11),
+        ('Bartemius', 'Crouch Sr.', 5, 11),
+        ('Alastor', 'Moody', 6, 11),
+        ('Nymphadora', 'Tonks', 6, 11),
+        ('Rita', 'Skeeter', 7, NULL),
+        ('Bozo', 'Cameraguyidk', 8, 16),
+        ('Xenophilius', 'Lovegood', 7, NULL),
+        ('Bellatrix', 'Lestrange', 10, 25),
+        ('Bartemius', 'Crouch Jr.', 10, 25),
+        ('Lucius', 'Malfoy', 10, 25),
+        ('Peter', 'Pettigrew', 9, 25),
+        ('Antonin', 'Dolohov', 10, 25),
+        ('Corban', 'Yaxley', 10, 25),
+        ('Tom', 'Riddle Jr.', 11, NULL);
