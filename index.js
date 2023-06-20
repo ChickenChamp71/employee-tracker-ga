@@ -102,66 +102,62 @@ function init() {
                             .then(() => {
                                 employees.forEach((employee) => {
 
-                                var managerName;
-
-                                if (employee.manager_id === !null) {
-
-                                    for (let i = 0; i < fullNameList.length; i++) {
+                                    var managerName = '';
+                                    for (let i = 0; i < fullNameList.length; i++) {       
                                         if (employee.manager_id === fullNameList[i].id) {
                                             managerName = fullNameList[i].full_name;
+                                            break;
                                         };
                                     };
-                                };
+                                    
+                                    db.query(`SELECT * FROM roles WHERE id = ?`, [employee.role_id], (err, info) => {
+                                        if (err) {
+                                            console.log(err);
+                                        } else {
+                                            const employeeTitle = info[0].job_title;
+                                            console.log(employeeTitle);
+                                            console.log(info[0].job_title);
+                                            
+                                            const employeeSalary = info[0].salary;
+                                            // console.log(employeeSalary);
 
-                                console.log('first level');
+                                            db.query(`SELECT department_name FROM departments WHERE id = ?`, [info[0].department_id], (err, empDep) => {
+                                                if (err) {
+                                                    console.log(err);
+                                                } else {
 
-                                db.query(`SELECT * FROM roles WHERE id = ?`, [employee.role_id], (err, info) => {
-                                    if (err) {
-                                        console.log(err);
-                                    } else {
-                                        const employeeTitle = info.job_title
-                                        
-                                        const employeeSalary = info.salary;
+                                                    const departmentName = empDep[0].department_name;
+                                                    
+                                                    employeeTable.push([employee.id, employee.first_name, employee.last_name, employeeTitle, departmentName, employeeSalary, managerName
+                                                    ]);
 
-                                        db.query(`SELECT department_name FROM departments WHERE id = ?`, [info.department_id], (err, empDep) => {
-                                            if (err) {
-                                                console.log(err);
-                                            } else {
-
-                                                employeeTable.push([employee.id, employee.first_name, employee.last_name, employeeTitle, empDep.department_name, employeeSalary, managerName
-                                                ]);
-
-                                                if (employeeTable.length === employees.length) {
-                                                    console.log(employeeTable.toString());
-                                                    init();
-                                                };
-                                            };
-                                        });
-                                    };
+                                                    if (employeeTable.length === employees.length) {
+                                                        console.log(employeeTable.toString());
+                                                        init();
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    });
                                 });
                             })
                             .catch((err) => {
                                 console.log(err);
                             });
-                        });
-                    };
-                    
+                    }
                 });
-
-                ;
 
             } else if (data.start === startQuestions[5]) {
                 roleCheck();
                 nameList();
                 newEmployee();
             };
-        });
-};
+    }
+)};
 
-function newEmployee() {
-
-    setTimeout(() => {
-        inquirer
+async function newEmployee() {
+    try {
+        const answers = await inquirer
             .prompt([
                 {
                     type: 'input',
@@ -185,63 +181,79 @@ function newEmployee() {
                     message: 'Who is their manager?',
                     choices: employeeList,
                 },
-            ])
-            .then((answers) => {
-
-                var roleId;
-                var managerId;
-
-                db.query(`SELECT id FROM roles WHERE job_title = ?`, [answers.title], (err, rows) => {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        roleId = rows.map((row) => row.id);
-                    }
-                });
-
-                const name = answers.manager.split(" ");
-
-                const first = name[0];
-                const last = name[1] + ' ' + name[2];
-
-                db.query(`SELECT id FROM employees WHERE first_name = ? AND last_name = ?`, [first, last], (err, rows) => {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        managerId = rows.map((row) => row.id);
-                    };
-                });
-
-                db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id)
-                    VALUES (?, ?, ?, ?)`, [answers.firstName, answers.lastName, roleId, managerId], (err, rows) => {
-                        if (err) {
-                            console.log(err);
-                        } else {
-                            const response = {
-                                status: 'Success',
-                                data: rows,
-                            };
-
-                            console.log(response);
-                            init();
-                        };
-                    }
-                );
-                
+            ]);
+    
+        var roleId;
+        var managerId;
+        
+        const jobQuery = new Promise((resolve, reject) => {
+            db.query(`SELECT id FROM roles WHERE job_title = ?`, [answers.title], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    roleId = rows[0].id;
+                    resolve();
+                }
             });
-    }, 100);
+        });
+
+        const name = answers.manager.split(" ");
+
+        var first = name[0];
+        var last = name[1];
+        if (name[2]) {
+            last = name[1] + ' ' + name[2];
+        };
+
+        const managerQuery = new Promise((resolve, reject) => {
+            db.query(`SELECT id FROM employees WHERE first_name = ? AND last_name = ?`, [first, last], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    managerId = rows[0].id;
+                    resolve();
+                };
+            });
+        });
+
+        await Promise.all([jobQuery, managerQuery]);
+
+        
+            const insertEmployee = new Promise((resolve, reject) => {
+                db.query(`INSERT INTO employees (first_name, last_name, role_id, manager_id)
+                VALUES (?, ?, ?, ?)`, [answers.firstName, answers.lastName, roleId, managerId], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+
+                        console.log('Employee successfully added!');
+                        resolve();
+                    };
+                }
+            );
+        });
+
+        await insertEmployee;
+        init();
+    } catch (err) {
+        console.log(err);
+        init();
+    }
 };
 
 var roles = [];
 
 function roleCheck() {
-    db.query(`SELECT roles.job_title FROM roles`, (err, rows) => {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT roles.job_title FROM roles`, (err, rows) => {
         if (err) {
-            console.log(err);
+            reject(err);
         } else {
             roles = rows.map((row) => row.job_title);
+            resolve();
         };
-    });
+        });
+    })
 };
 
 var employeeList = [];
