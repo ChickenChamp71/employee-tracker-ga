@@ -115,11 +115,8 @@ function init() {
                                             console.log(err);
                                         } else {
                                             const employeeTitle = info[0].job_title;
-                                            console.log(employeeTitle);
-                                            console.log(info[0].job_title);
                                             
                                             const employeeSalary = info[0].salary;
-                                            // console.log(employeeSalary);
 
                                             db.query(`SELECT department_name FROM departments WHERE id = ?`, [info[0].department_id], (err, empDep) => {
                                                 if (err) {
@@ -146,17 +143,82 @@ function init() {
                             });
                     }
                 });
+            } else if (data.addDepartment) {
+                
+                db.query(`INSERT INTO departments (department_name)
+                VALUES (?)`, [data.addDepartment], (err, dep) => {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log('Department added!');
+                        init();
+                    };
+                });
+            } else if (data.addRole) {
+
+                departmentCheck()
+                    .then(() => {
+
+                        console.log(departments);
+
+                        inquirer
+                            .prompt([
+                                {
+                                    type: 'input',
+                                    name: 'salary',
+                                    message: 'What is the salary?',
+                                    validate: function (salary) {
+                                        const length = String(salary).length;
+                                        const charLimit = 30;
+
+                                        if (length > charLimit) {
+                                            return `Too many characters used. Please try again.`
+                                        }
+                                        return true;
+                                    },
+                                },
+                                {
+                                    type: 'list',
+                                    name: 'department',
+                                    message: 'What department is it a part of?',
+                                    choices: departments,
+                                },
+                            ])
+                            .then((answers) => {
+
+                                db.query(`SELECT id FROM departments WHERE department_name = ?`, [answers.department], (err, id) => {
+                                    if (err) {
+                                        console.log(err);
+                                    } else {
+                                        const depId = id[0].id;
+
+                                        db.query(`INSERT INTO roles (job_title, salary, department_id)
+                                        VALUES (?, ?, ?)`, [data.addRole, answers.salary, depId], (err, newRole) => {
+                                            if (err) {
+                                                console.log(err);
+                                            } else {
+                                                console.log(`Job added!`);
+                                                init();
+                                            };
+                                        });
+                                    };
+                                });
+                            });
+                    });
 
             } else if (data.start === startQuestions[5]) {
                 roleCheck();
                 nameList();
                 newEmployee();
-            };
+            } else if (data.start === startQuestions[6]) {
+                updateEmployee();
+            }
     }
 )};
 
 async function newEmployee() {
     try {
+        await Promise.all([roleCheck(), nameList()]);
         const answers = await inquirer
             .prompt([
                 {
@@ -241,19 +303,134 @@ async function newEmployee() {
     }
 };
 
+async function updateEmployee() {
+    try {
+        await Promise.all([roleCheck(), departmentCheck(), nameList()]);
+        const answers = await inquirer
+            .prompt([
+                {
+                    type: 'list',
+                    name: 'empUpdate',
+                    message: 'Which employee would you like to update?',
+                    choices: employeeList,
+                },
+            ]);
+        var employeeId = '';
+        for (let i = 0; i < fullNameList.length; i++) {       
+            if (answers.empUpdate === fullNameList[i].full_name) {
+                employeeId = fullNameList[i].id;
+                break;
+            };
+        };
+        var employeeInfo = [];
+        function employee() {
+            return new Promise((resolve, reject) => {
+                db.query(`SELECT * FROM employees WHERE id = ?`, [employeeId], (err, info) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        info = employeeInfo;
+                        resolve();
+                    };
+                });
+            });
+        };
+        var jobInfo = '';
+        function jobFind() {
+            return new Promise((resolve, reject) => {
+                db.query(`SELECT job_title FROM roles WHERE id = ?`, [employeeInfo.role_id], (err, info) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        info = jobInfo;
+                        resolve();
+                    };
+                });
+            });
+        };
+        var managerName = '';
+        function managerFind() {
+            return new Promise((resolve, reject) => {
+                for (let i = 0; i < fullNameList.length; i++) {       
+                    if (answers.empUpdate === fullNameList[i].full_name) {
+                        employeeId = fullNameList[i].id;
+                        break;
+                    };
+                };
+            })
+        }
+            
+        await Promise.all([employee(), jobFind()]);
+        const employeeQuestions = await inquirer
+            .prompt([
+                {
+                    type: 'list',
+                    name: 'changeList',
+                    message: 'What would you like to change?',
+                    choices: ['First name', 'Last name', 'Job', 'Manager',  'Back'],
+                },
+                {
+                    type: 'input',
+                    name: 'first',
+                    message: `Change first name from ${employeeInfo.first_name} to:`,
+                    when: (answers) => answers.changeList === 'First name',
+                },
+                {
+                    type: 'input',
+                    name: 'last',
+                    message: `Change last name from ${employeeInfo.last_name} to:`,
+                    when: (answers) => answers.changeList === 'Last name',
+                },
+                {
+                    type: 'list',
+                    name: 'job',
+                    message: `Change job from ${jobInfo} to:`,
+                    choices: roles,
+                    when: (answers) => answers.changeList === 'Job',
+                },
+                {
+                    type: 'list',
+                    name: 'manager',
+                    message: `Change manager from ${managerName}`,
+                    choices: employeeList,
+                }
+            ])
+
+        
+
+    } catch (err) {
+        console.log(err);
+    };
+};
+
 var roles = [];
 
 function roleCheck() {
     return new Promise((resolve, reject) => {
         db.query(`SELECT roles.job_title FROM roles`, (err, rows) => {
-        if (err) {
-            reject(err);
-        } else {
-            roles = rows.map((row) => row.job_title);
-            resolve();
-        };
+            if (err) {
+                reject(err);
+            } else {
+                roles = rows.map((row) => row.job_title);
+                resolve();
+            };
         });
     })
+};
+
+var departments = [];
+
+function departmentCheck() {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT departments.department_name FROM departments`, (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                departments = rows.map((row) => row.department_name);
+                resolve();
+            };
+        });
+    });
 };
 
 var employeeList = [];
