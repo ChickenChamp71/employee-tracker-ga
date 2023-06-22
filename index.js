@@ -315,27 +315,47 @@ async function updateEmployee() {
                     choices: employeeList,
                 },
             ]);
+
+        await answers;
         var employeeId = '';
-        for (let i = 0; i < fullNameList.length; i++) {       
-            if (answers.empUpdate === fullNameList[i].full_name) {
-                employeeId = fullNameList[i].id;
-                break;
-            };
+
+        function employeeIdFind() {
+            return new Promise((resolve, reject) => {
+                for (let i = 0; i < fullNameList.length; i++) {       
+                    if (answers.empUpdate === fullNameList[i].full_name) {
+                        employeeId = fullNameList[i].id;
+                        resolve();
+                    } else if (i > fullNameList.length) {
+                        reject();
+                    }
+                };
+            });
         };
+
+        await employeeIdFind();
+        console.log(employeeId);
+        
         var employeeInfo = [];
+
         function employee() {
             return new Promise((resolve, reject) => {
-                db.query(`SELECT * FROM employees WHERE id = ?`, [employeeId], (err, info) => {
+                db.query(`SELECT * FROM employees WHERE id = ?`, [employeeId], (err, resp) => {
                     if (err) {
                         reject(err);
                     } else {
-                        info = employeeInfo;
+                        resp = employeeInfo;
+                        console.log(resp);
                         resolve();
                     };
                 });
             });
         };
+
+        await employee();
+        console.log(employeeInfo);
+
         var jobInfo = '';
+
         function jobFind() {
             return new Promise((resolve, reject) => {
                 db.query(`SELECT job_title FROM roles WHERE id = ?`, [employeeInfo.role_id], (err, info) => {
@@ -348,19 +368,23 @@ async function updateEmployee() {
                 });
             });
         };
+
         var managerName = '';
+
         function managerFind() {
             return new Promise((resolve, reject) => {
                 for (let i = 0; i < fullNameList.length; i++) {       
-                    if (answers.empUpdate === fullNameList[i].full_name) {
-                        employeeId = fullNameList[i].id;
-                        break;
-                    };
+                    if (employeeInfo.manager_id === fullNameList[i].id) {
+                        managerName = fullNameList[i].full_name;
+                        resolve();
+                    } else if (i = fullNameList.length) {
+                        reject();
+                    }
                 };
-            })
-        }
+            });
+        };
             
-        await Promise.all([employee(), jobFind()]);
+        await Promise.all([employeeIdFind(), employee(), jobFind(), managerFind()]);
         const employeeQuestions = await inquirer
             .prompt([
                 {
@@ -393,8 +417,15 @@ async function updateEmployee() {
                     name: 'manager',
                     message: `Change manager from ${managerName}`,
                     choices: employeeList,
-                }
-            ])
+                    when: (answers) => answers.changeList === 'Manager',
+                },
+            ]);
+
+            await employeeQuestions;
+
+            if (employeeQuestions.first) {
+                console.log('answer one');
+            };
 
         
 
