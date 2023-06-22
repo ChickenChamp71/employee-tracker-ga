@@ -393,6 +393,7 @@ async function updateEmployee() {
                     name: 'manager',
                     message: `Change manager from ${managerName}`,
                     choices: employeeList,
+                    when: (answers) => answers.changeList === 'Manager',
                 }
             ])
 
