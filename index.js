@@ -89,14 +89,15 @@ function init() {
                 });
                 
             } else if (data.start === startQuestions[2]) {
-                console.log(`employee list`);
+
                 db.query(`SELECT * FROM employees`, (err, employees) => {
                     if (err) {
                         console.log(err);
                     } else {
-                        const employeeTable = new Table([
-                            'ID', 'First Name', 'Last Name', 'Title', 'Department', 'Salary', 'Manager'
-                        ]);
+
+                        const employeeTable = new Table({
+                            head: ['ID', 'First Name', 'Last Name', 'Job Title', 'Department', 'Salary', 'Manager']
+                        });
 
                         nameList()
                             .then(() => {
@@ -118,6 +119,10 @@ function init() {
                                             
                                             const employeeSalary = info[0].salary;
 
+                                            if (managerName === '') {
+                                                managerName = 'None';
+                                            };
+
                                             db.query(`SELECT department_name FROM departments WHERE id = ?`, [info[0].department_id], (err, empDep) => {
                                                 if (err) {
                                                     console.log(err);
@@ -125,8 +130,7 @@ function init() {
 
                                                     const departmentName = empDep[0].department_name;
                                                     
-                                                    employeeTable.push([employee.id, employee.first_name, employee.last_name, employeeTitle, departmentName, employeeSalary, managerName
-                                                    ]);
+                                                    employeeTable.push([employee.id, employee.first_name, employee.last_name, employeeTitle, departmentName, employeeSalary, managerName]);
 
                                                     if (employeeTable.length === employees.length) {
                                                         console.log(employeeTable.toString());
@@ -333,9 +337,11 @@ async function updateEmployee() {
         };
 
         await employeeIdFind();
-        console.log(employeeId);
         
-        var employeeInfo = [];
+        var firstName = [];
+        var lastName = [];
+        var roleId = [];
+        var managerId = [];
 
         function employee() {
             return new Promise((resolve, reject) => {
@@ -343,8 +349,10 @@ async function updateEmployee() {
                     if (err) {
                         reject(err);
                     } else {
-                        resp = employeeInfo;
-                        console.log(resp);
+                        firstName = resp.map((first) => first.first_name);
+                        lastName = resp.map((last) => last.last_name);
+                        roleId = resp.map((id) => id.role_id);
+                        managerId = resp.map((manager) => manager.manager_id);
                         resolve();
                     };
                 });
@@ -352,17 +360,17 @@ async function updateEmployee() {
         };
 
         await employee();
-        console.log(employeeInfo);
 
         var jobInfo = '';
 
         function jobFind() {
             return new Promise((resolve, reject) => {
-                db.query(`SELECT job_title FROM roles WHERE id = ?`, [employeeInfo.role_id], (err, info) => {
+                db.query(`SELECT job_title FROM roles WHERE id = ?`, [roleId], (err, info) => {
                     if (err) {
                         reject(err);
                     } else {
-                        info = jobInfo;
+                        jobInfo = info.map((job) => job.job_title);
+                        console.log(jobInfo);
                         resolve();
                     };
                 });
@@ -370,14 +378,14 @@ async function updateEmployee() {
         };
 
         var managerName = '';
-
+        
         function managerFind() {
             return new Promise((resolve, reject) => {
                 for (let i = 0; i < fullNameList.length; i++) {       
-                    if (employeeInfo.manager_id === fullNameList[i].id) {
+                    if (managerId == fullNameList[i].id) {
                         managerName = fullNameList[i].full_name;
                         resolve();
-                    } else if (i = fullNameList.length) {
+                    } else if (i > fullNameList.length) {
                         reject();
                     }
                 };
@@ -385,53 +393,127 @@ async function updateEmployee() {
         };
             
         await Promise.all([employeeIdFind(), employee(), jobFind(), managerFind()]);
-        const employeeQuestions = await inquirer
-            .prompt([
-                {
-                    type: 'list',
-                    name: 'changeList',
-                    message: 'What would you like to change?',
-                    choices: ['First name', 'Last name', 'Job', 'Manager',  'Back'],
-                },
-                {
-                    type: 'input',
-                    name: 'first',
-                    message: `Change first name from ${employeeInfo.first_name} to:`,
-                    when: (answers) => answers.changeList === 'First name',
-                },
-                {
-                    type: 'input',
-                    name: 'last',
-                    message: `Change last name from ${employeeInfo.last_name} to:`,
-                    when: (answers) => answers.changeList === 'Last name',
-                },
-                {
-                    type: 'list',
-                    name: 'job',
-                    message: `Change job from ${jobInfo} to:`,
-                    choices: roles,
-                    when: (answers) => answers.changeList === 'Job',
-                },
-                {
-                    type: 'list',
-                    name: 'manager',
-                    message: `Change manager from ${managerName}`,
-                    choices: employeeList,
-                    when: (answers) => answers.changeList === 'Manager',
-                },
-            ]);
 
-            await employeeQuestions;
+        updateQuestions();
 
-            if (employeeQuestions.first) {
-                console.log('answer one');
-            };
+        async function updateQuestions() {
+            await inquirer
+                .prompt([
+                    {
+                        type: 'list',
+                        name: 'changeList',
+                        message: 'What would you like to change?',
+                        choices: ['First name', 'Last name', 'Job', 'Manager',  'Back'],
+                    },
+                    {
+                        type: 'input',
+                        name: 'first',
+                        message: `Change first name from ${firstName} to:`,
+                        when: (answers) => answers.changeList === 'First name',
+                    },
+                    {
+                        type: 'input',
+                        name: 'last',
+                        message: `Change last name from ${lastName} to:`,
+                        when: (answers) => answers.changeList === 'Last name',
+                    },
+                    {
+                        type: 'list',
+                        name: 'job',
+                        message: `Change job from ${jobInfo} to:`,
+                        choices: roles,
+                        when: (answers) => answers.changeList === 'Job',
+                    },
+                    {
+                        type: 'list',
+                        name: 'manager',
+                        message: `Change manager from ${managerName}`,
+                        choices: employeeList,
+                        when: (answers) => answers.changeList === 'Manager',
+                    },
+                ])
+                .then(async (answers) => {
 
-        
+                    await Promise.all([nameList(), roleCheck(), departmentCheck()]);
 
-    } catch (err) {
-        console.log(err);
-    };
+                    if (answers.first) {
+
+                        db.query(`UPDATE employees SET employees.first_name = ? WHERE id = ?`, [answers.first, employeeId], (err, res) => {
+                            if (err) {
+                                console.log(err);
+                            } else {
+                                console.log(`Name changed to ${answers.first}.`);
+                                updateQuestions();
+                            };
+                        });
+                    } else if (answers.last) {
+
+                        db.query(`UPDATE employees SET employees.last_name = ? WHERE id = ?`, [answers.last, employeeId], (err, res) => {
+                            if (err) {
+                                console.log(err);
+                            } else {
+                                console.log(`Name changed to ${answers.last}.`);
+                                updateQuestions();
+                            };
+                        });
+                    } else if (answers.job) {
+
+                        var jobId = [];
+                        
+                        db.query(`SELECT * FROM roles`, (err, res) => {
+                            if (err) {
+                                console.log(err);
+                            } else {
+                                for (let i = 0; i <     roles.length; i++) {
+                                    if (answers.job == res[i].job_title) {
+                                        jobId = res[i].id;
+                                        break;
+                                    };
+                                };
+
+                                if (!jobId) {
+                                    console.log(`No job available.`);
+                                    return;
+                                };
+                                db.query(`UPDATE employees SET employees.role_id = ? WHERE id = ?`, [jobId, employeeId], (err, res) => {
+                                    if (err) {
+                                        console.log(err);
+                                    } else {
+                                        console.log(`Job changed to ${answers.job}.`);
+                                        updateQuestions();
+                                    };
+                                });
+                            };
+                        });
+
+                    } else if (answers.manager) {
+                        db.query(`SELECT * FROM employees`, (err, res) => {
+                            if (err) {
+                                console.log(err);
+                            } else {
+                                for (let i = 0; i < fullNameList.length; i++) {
+                                    if (fullNameList[i].full_name == answers.manager) {
+                                        db.query(`UPDATE employees SET employees.manager_id = ? WHERE id = ?`, [fullNameList[i].id, employeeId], (err, res) => {
+                                            if (err) {
+                                                console.log(err);
+                                            } else {
+                                                console.log(`Manager changed to ${answers.manager}.`);
+                                                updateQuestions();
+                                            };
+                                        });
+                                    };
+                                };
+                            };
+                        });
+                    } else {
+                        init();
+                    }
+                });  
+            } 
+
+        } catch (err) {
+            console.log(err);
+        }
 };
 
 var roles = [];
