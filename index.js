@@ -163,8 +163,6 @@ function init() {
                 departmentCheck()
                     .then(() => {
 
-                        console.log(departments);
-
                         inquirer
                             .prompt([
                                 {
